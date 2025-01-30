@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Solar</title>
+    <style>
+        /* Estilos anteriores mantidos */
+        :root {
+            --primary: #FF6B35;
+            --secondary: #FFD460;
+            --background: linear-gradient(135deg, #2d00f7 0%, #8900f2 100%);
+            --correct: #06d6a0;
+            --incorrect: #ef476f;
+            --timer: #ffeb3b;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background: var(--background);
+            color: white;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 25px;
+            left: 25px;
+            padding: 12px 25px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid white;
+            border-radius: 30px;
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateX(-5px);
+        }
+
+        .back-button::before {
+            content: '←';
+            font-size: 1.2em;
+        }
+
+        .quiz-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .question-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 2rem;
+            border-radius: 20px;
+            margin: 2rem 0;
+            animation: fadeIn 0.5s ease;
+            position: relative;
+        }
+
+        .timer {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: var(--timer);
+            color: #000;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+
+        .option {
+            display: block;
+            width: 100%;
+            padding: 1.2rem;
+            margin: 0.8rem 0;
+            background: rgba(255, 255, 255, 0.15);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .option:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: translateX(10px);
+        }
+
+        .explanation {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            animation: slideUp 0.5s ease;
+        }
+
+        .score-box {
+            text-align: center;
+            padding: 3rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+            animation: fadeIn 1s ease;
+        }
+
+        .restart-button {
+            margin-top: 2rem;
+            padding: 1rem 2rem;
+            background: var(--primary);
+            border: none;
+            border-radius: 25px;
+            color: white;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .restart-button:hover {
+            background: #ff5722;
+            transform: scale(1.05);
+        }
+
+        .ranking {
+            margin-top: 2rem;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1.5rem;
+            border-radius: 15px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
+            margin: 2rem 0;
+        }
+
+        .progress {
+            height: 100%;
+            background: var(--correct);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        @media (max-width: 768px) {
+            .quiz-container {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-button">Voltar</a>
+
+    <div class="quiz-container">
+        <div class="progress-bar">
+            <div class="progress"></div>
+        </div>
+
+        <div id="questionContainer"></div>
+        <div id="rankingContainer" class="ranking" style="display: none;">
+            <h2>Ranking</h2>
+            <ol id="rankingList"></ol>
+        </div>
+    </div>
+
+    <script>
+        // Banco de 50 questões
+        const allQuestions = [
+            // Fácil (20 questões)
+            {
+                question: "Qual vitamina é produzida com ajuda do sol?",
+                options: ["Vitamina A", "Vitamina D", "Vitamina C"],
+                correct: 1,
+                explanation: "A vitamina D é essencial para a saúde dos ossos e é produzida quando a pele é exposta ao sol.",
+                difficulty: 1
+            },
+            {
+                question: "Qual o melhor horário para exposição solar?",
+                options: ["10h às 16h", "12h às 14h", "Antes das 10h e após as 16h"],
+                correct: 2,
+                explanation: "Fora do horário de pico solar, os raios UV são menos intensos e mais seguros.",
+                difficulty: 1
+            },
+            {
+                question: "Qual o fator de proteção solar mínimo recomendado?",
+                options: ["FPS 15", "FPS 30", "FPS 50"],
+                correct: 1,
+                explanation: "O FPS 30 bloqueia cerca de 97% dos raios UVB, sendo o mínimo recomendado.",
+                difficulty: 1
+            },
+            {
+                question: "Quanto tempo leva para o sol esquentar a Terra?",
+                options: ["8 minutos", "1 hora", "8 horas"],
+                correct: 0,
+                explanation: "A luz solar leva aproximadamente 8 minutos para viajar do Sol até a Terra.",
+                difficulty: 1
+            },
+            {
+                question: "Qual a cor do Sol?",
+                options: ["Amarelo", "Branco", "Vermelho"],
+                correct: 1,
+                explanation: "O Sol parece amarelo devido à atmosfera da Terra, mas sua cor real é branca.",
+                difficulty: 1
+            },
+            {
+                question: "Quantos planetas orbitam o Sol?",
+                options: ["7", "8", "9"],
+                correct: 1,
+                explanation: "O Sistema Solar tem 8 planetas: Mercúrio, Vênus, Terra, Marte, Júpiter, Saturno, Urano e Netuno.",
+                difficulty: 1
+            },
+            {
+                question: "Qual a principal fonte de energia do Sol?",
+                options: ["Combustão", "Fusão nuclear", "Fissão nuclear"],
+                correct: 1,
+                explanation: "O Sol produz energia através da fusão de átomos de hidrogênio em hélio.",
+                difficulty: 1
+            },
+            {
+                question: "Qual a distância média entre a Terra e o Sol?",
+                options: ["149 milhões de km", "384 mil km", "1 bilhão de km"],
+                correct: 0,
+                explanation: "Essa distância é chamada de Unidade Astronômica (UA).",
+                difficulty: 1
+            },
+            {
+                question: "Quantos minutos a luz solar leva para chegar à Terra?",
+                options: ["1 minuto", "8 minutos", "1 hora"],
+                correct: 1,
+                explanation: "A luz solar viaja a 300.000 km/s e leva aproximadamente 8 minutos para chegar à Terra.",
+                difficulty: 1
+            },
+            {
+                question: "Qual a camada mais externa do Sol?",
+                options: ["Fotosfera", "Cromosfera", "Coroa"],
+                correct: 2,
+                explanation: "A coroa solar é visível durante eclipses totais do Sol.",
+                difficulty: 1
+            },
+            {
+                question: "Qual o diâmetro aproximado do Sol?",
+                options: ["1,4 milhão de km", "500 mil km", "5 milhões de km"],
+                correct: 0,
+                explanation: "O Sol é cerca de 109 vezes maior que a Terra em diâmetro.",
+                difficulty: 1
+            },
+            {
+                question: "Qual o gás mais abundante no Sol?",
+                options: ["Hidrogênio", "Hélio", "Oxigênio"],
+                correct: 0,
+                explanation: "Cerca de 75% da massa do Sol é composta por hidrogênio.",
+                difficulty: 1
+            },
+            {
+                question: "O que são manchas solares?",
+                options: ["Buracos na superfície", "Áreas mais frias", "Explosões solares"],
+                correct: 1,
+                explanation: "Manchas solares são regiões mais frias e com intensa atividade magnética.",
+                difficulty: 1
+            },
+            {
+                question: "Qual o nome do ciclo de atividade solar?",
+                options: ["Ciclo de 11 anos", "Ciclo de 100 anos", "Ciclo de 1 ano"],
+                correct: 0,
+                explanation: "O ciclo solar tem duração média de 11 anos, com períodos de máxima e mínima atividade.",
+                difficulty: 1
+            },
+            {
+                question: "O que é uma aurora boreal?",
+                options: ["Explosão solar", "Efeito do vento solar", "Eclipse lunar"],
+                correct: 1,
+                explanation: "Auroras são causadas pela interação do vento solar com o campo magnético da Terra.",
+                difficulty: 1
+            },
+            {
+                question: "Qual a temperatura aproximada do núcleo do Sol?",
+                options: ["1 milhão °C", "15 milhões °C", "100 milhões °C"],
+                correct: 1,
+                explanation: "O núcleo solar atinge temperaturas extremas necessárias para a fusão nuclear.",
+                difficulty: 1
+            },
+            {
+                question: "Quantas vezes o Sol é maior que a Terra?",
+                options: ["100 vezes", "109 vezes", "330 vezes"],
+                correct: 2,
+                explanation: "O diâmetro do Sol é aproximadamente 109 vezes maior que o da Terra.",
+                difficulty: 1
+            },
+            {
+                question: "O que é um eclipse solar?",
+                options: ["Lua entre Sol e Terra", "Terra entre Sol e Lua", "Marte entre Sol e Terra"],
+                correct: 0,
+                explanation: "Um eclipse solar ocorre quando a Lua passa entre o Sol e a Terra.",
+                difficulty: 1
+            },
+            {
+                question: "Qual a idade aproximada do Sol?",
+                options: ["1 bilhão de anos", "4,6 bilhões de anos", "10 bilhões de anos"],
+                correct: 1,
+                explanation: "O Sol e o Sistema Solar têm cerca de 4,6 bilhões de anos.",
+                difficulty: 1
+            },
+            {
+                question: "O que é o vento solar?",
+                options: ["Partículas emitidas pelo Sol", "Movimento das nuvens", "Tempestades na Terra"],
+                correct: 0,
+                explanation: "O vento solar é composto por partículas carregadas emitidas pela coroa solar.",
+                difficulty: 1
+            },
+
+            // Médio (20 questões)
+            {
+                question: "Qual a temperatura aproximada da superfície solar?",
+                options: ["1.000°C", "5.500°C", "10.000°C"],
+                correct: 1,
+                explanation: "A fotosfera, camada visível do Sol, tem temperatura média de 5.500°C.",
+                difficulty: 2
+            },
+            {
+                question: "Qual a velocidade de rotação do Sol?",
+                options: ["25 dias no equador", "1 dia", "365 dias"],
+                correct: 0,
+                explanation: "O Sol gira mais rápido no equador (25 dias) do que nos polos (36 dias).",
+                difficulty: 2
+            },
+            {
+                question: "O que é uma protuberância solar?",
+                options: ["Mancha escura", "Jato de gás", "Buraco negro"],
+                correct: 1,
+                explanation: "Protuberâncias são enormes jatos de gás que se projetam da superfície solar.",
+                difficulty: 2
+            },
+            {
+                question: "Qual a principal reação nuclear no Sol?",
+                options: ["Fusão de hidrogênio", "Fissão de urânio", "Fusão de hélio"],
+                correct: 0,
+                explanation: "O Sol converte hidrogênio em hélio através da fusão nuclear.",
+                difficulty: 2
+            },
+            {
+                question: "O que é uma ejeção de massa coronal?",
+                options: ["Explosão de partículas", "Formação de manchas", "Resfriamento do Sol"],
+                correct: 0,
+                explanation: "São grandes erupções de partículas carregadas que podem afetar a Terra.",
+                difficulty: 2
+            },
+            {
+                question: "Qual a composição química predominante do Sol?",
+                options: ["Hidrogênio e Hélio", "Oxigênio e Nitrogênio", "Ferro e Níquel"],
+                correct: 0,
+                explanation: "Cerca de 75% de hidrogênio e 24% de hélio, com 1% de outros elementos.",
+                difficulty: 2
+            },
+            {
+                question: "O que é o ciclo solar?",
+                options: ["Variação de temperatura", "Mudança no campo magnético", "Alteração na órbita"],
+                correct: 1,
+                explanation: "O ciclo solar envolve mudanças no campo magnético e na atividade solar.",
+                difficulty: 2
+            },
+            {
+                question: "Qual a velocidade do vento solar?",
+                options: ["400 km/s", "1.000 km/s", "10.000 km/s"],
+                correct: 0,
+                explanation: "O vento solar viaja a cerca de 400 km/s, podendo chegar a 800 km/s durante tempestades.",
+                difficulty: 2
+            },
+            {
+                question: "O que é a fotosfera?",
+                options: ["Camada interna", "Superfície visível", "Atmosfera externa"],
+                correct: 1,
+                explanation: "A fotosfera é a camada visível do Sol, onde a luz é emitida.",
+                difficulty: 2
+            },
+            {
+                question: "Qual a espessura da fotosfera?",
+                options: ["100 km", "500 km", "1.000 km"],
+                correct: 1,
+                explanation: "A fotosfera tem cerca de 500 km de espessura.",
+                difficulty: 2
+            },
+            {
+                question: "O que são grânulos solares?",
+                options: ["Manchas escuras", "Células convectivas", "Explosões"],
+                correct: 1,
+                explanation: "Grânulos são células convectivas que transportam calor para a superfície.",
+                difficulty: 2
+            },
+            {
+                question: "Qual a duração do ciclo solar?",
+                options: ["11 anos", "22 anos", "50 anos"],
+                correct: 0,
+                explanation: "O ciclo solar tem duração média de 11 anos, com períodos de máxima e mínima atividade.",
+                difficulty: 2
+            },
+            {
+                question: "O que é a cromosfera?",
+                options: ["Camada interna", "Atmosfera média", "Núcleo do Sol"],
+                correct: 1,
+                explanation: "A cromosfera é a camada atmosférica acima da fotosfera.",
+                difficulty: 2
+            },
+            {
+                question: "O que é um flare solar?",
+                options: ["Explosão de energia", "Mancha escura", "Buraco coronal"],
+                correct: 0,
+                explanation: "Flares são explosões intensas de radiação e partículas carregadas.",
+                difficulty: 2
+            },
+            {
+                question: "Qual a temperatura da coroa solar?",
+                options: ["1 milhão °C", "5 milhões °C", "10 milhões °C"],
+                correct: 0,
+                explanation: "A coroa solar pode atingir temperaturas de até 1 milhão de graus Celsius.",
+                difficulty: 2
+            },
+            {
+                question: "O que é um buraco coronal?",
+                options: ["Área escura", "Região de baixa densidade", "Mancha solar"],
+                correct: 1,
+                explanation: "Buracos coronais são regiões onde o campo magnético se abre, permitindo a saída do vento solar.",
+                difficulty: 2
+            },
+            {
+                question: "Qual a velocidade de rotação do Sol nos polos?",
+                options: ["25 dias", "36 dias", "50 dias"],
+                correct: 1,
+                explanation: "O Sol gira mais lentamente nos polos, com período de cerca de 36 dias.",
+                difficulty: 2
+            },
+            {
+                question: "O que é o limbo solar?",
+                options: ["Borda visível", "Núcleo interno", "Atmosfera externa"],
+                correct: 0,
+                explanation: "O limbo solar é a borda visível do disco solar.",
+                difficulty: 2
+            },
+            {
+                question: "Qual a espessura da cromosfera?",
+                options: ["2.000 km", "5.000 km", "10.000 km"],
+                correct: 0,
+                explanation: "A cromosfera tem cerca de 2.000 km de espessura.",
+                difficulty: 2
+            },
+            {
+                question: "O que é o espectro solar?",
+                options: ["Luz visível", "Radiação total", "Campo magnético"],
+                correct: 1,
+                explanation: "O espectro solar inclui todas as formas de radiação emitidas pelo Sol.",
+                difficulty: 2
+            },
+
+            // Difícil (10 questões)
+            {
+                question: "Qual a massa do Sol em relação à Terra?",
+                options: ["333 mil vezes", "1 milhão de vezes", "10 milhões de vezes"],
+                correct: 0,
+                explanation: "O Sol tem cerca de 333 mil vezes a massa da Terra.",
+                difficulty: 3
+            },
+            {
+                question: "Qual a energia total emitida pelo Sol?",
+                options: ["3,8 x 10²⁶ W", "1 x 10³⁰ W", "5 x 10²⁰ W"],
+                correct: 0,
+                explanation: "O Sol emite cerca de 3,8 x 10²⁶ watts de energia.",
+                difficulty: 3
+            },
+            {
+                question: "Qual a idade estimada do Sol até se tornar uma gigante vermelha?",
+                options: ["5 bilhões de anos", "10 bilhões de anos", "15 bilhões de anos"],
+                correct: 1,
+                explanation: "O Sol tem cerca de 5 bilhões de anos e se tornará uma gigante vermelha em mais 5 bilhões de anos.",
+                difficulty: 3
+            },
+            {
+                question: "Qual a velocidade de escape do Sol?",
+                options: ["617 km/s", "1.000 km/s", "2.000 km/s"],
+                correct: 0,
+                explanation: "A velocidade de escape do Sol é de aproximadamente 617 km/s.",
+                difficulty: 3
+            },
+            {
+                question: "Qual a densidade média do Sol?",
+                options: ["1,4 g/cm³", "5 g/cm³", "10 g/cm³"],
+                correct: 0,
+                explanation: "A densidade média do Sol é de cerca de 1,4 g/cm³, semelhante à densidade da água.",
+                difficulty: 3
+            },
+            {
+                question: "Qual a luminosidade do Sol?",
+                options: ["3,8 x 10²⁶ W", "1 x 10³⁰ W", "5 x 10²⁰ W"],
+                correct: 0,
+                explanation: "A luminosidade solar é de aproximadamente 3,8 x 10²⁶ watts.",
+                difficulty: 3
+            },
+            {
+                question: "Qual a temperatura do núcleo solar?",
+                options: ["15 milhões °C", "100 milhões °C", "1 bilhão °C"],
+                correct: 0,
+                explanation: "O núcleo solar atinge temperaturas de cerca de 15 milhões de graus Celsius.",
+                difficulty: 3
+            },
+            {
+                question: "Qual a pressão no núcleo do Sol?",
+                options: ["250 bilhões de atmosferas", "1 trilhão de atmosferas", "10 trilhões de atmosferas"],
+                correct: 0,
+                explanation: "A pressão no núcleo solar é de cerca de 250 bilhões de atmosferas.",
+                difficulty: 3
+            },
+            {
+                question: "Qual a taxa de perda de massa do Sol?",
+                options: ["4 milhões de toneladas por segundo", "1 bilhão de toneladas por segundo", "10 trilhões de toneladas por segundo"],
+                correct: 0,
+                explanation: "O Sol perde cerca de 4 milhões de toneladas de massa por segundo através da fusão nuclear.",
+                difficulty: 3
+            },
+            {
+                question: "Qual a velocidade orbital do Sol em torno da Via Láctea?",
+                options: ["220 km/s", "500 km/s", "1.000 km/s"],
+                correct: 0,
+                explanation: "O Sol orbita o centro da Via Láctea a cerca de 220 km/s.",
+                difficulty: 3
+            }
+        ];
+
+        // Restante do código (lógica do quiz) permanece igual
+        let currentQuestions = [];
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let timer;
+        const totalQuestions = 10;
+        const timePerQuestion = 20; // segundos
+        const ranking = JSON.parse(localStorage.getItem('quizRanking')) || [];
+
+        // Iniciar o quiz ao carregar a página
+        document.addEventListener('DOMContentLoaded', () => {
+            startQuiz();
+        });
+
+        function startQuiz() {
+            currentQuestions = selectQuestions();
+            currentQuestionIndex = 0;
+            score = 0;
+            showQuestion();
+            showRanking();
+        }
+
+        function selectQuestions() {
+            const easy = allQuestions.filter(q => q.difficulty === 1);
+            const medium = allQuestions.filter(q => q.difficulty === 2);
+            const hard = allQuestions.filter(q => q.difficulty === 3);
+
+            const selected = [
+                ...getRandomQuestions(easy, 4),
+                ...getRandomQuestions(medium, 4),
+                ...getRandomQuestions(hard, 2)
+            ];
+
+            return selected.sort(() => Math.random() - 0.5);
+        }
+
+        function getRandomQuestions(questions, count) {
+            return questions.sort(() => 0.5 - Math.random()).slice(0, count);
+        }
+
+        function showQuestion() {
+            clearInterval(timer);
+            const q = currentQuestions[currentQuestionIndex];
+            const questionHTML = `
+                <div class="question-card">
+                    <div class="timer" id="timer">${timePerQuestion}s</div>
+                    <h2>${q.question}</h2>
+                    ${q.options.map((opt, i) => `
+                        <button class="option" onclick="checkAnswer(${i})">${opt}</button>
+                    `).join('')}
+                </div>
+            `;
+            
+            document.getElementById('questionContainer').innerHTML = questionHTML;
+            startTimer();
+            updateProgress();
+        }
+
+        function startTimer() {
+            let timeLeft = timePerQuestion;
+            const timerElement = document.getElementById('timer');
+            
+            timer = setInterval(() => {
+                timeLeft--;
+                timerElement.textContent = `${timeLeft}s`;
+                
+                if(timeLeft <= 0) {
+                    clearInterval(timer);
+                    handleTimeout();
+                }
+            }, 1000);
+        }
+
+        function handleTimeout() {
+            const explanation = currentQuestions[currentQuestionIndex].explanation;
+            showExplanation(explanation);
+            nextQuestion();
+        }
+
+        function checkAnswer(selected) {
+            clearInterval(timer);
+            const correctAnswer = currentQuestions[currentQuestionIndex].correct;
+            const explanation = currentQuestions[currentQuestionIndex].explanation;
+            
+            if(selected === correctAnswer) {
+                score += currentQuestions[currentQuestionIndex].difficulty;
+            }
+            
+            showExplanation(explanation, selected === correctAnswer);
+            nextQuestion();
+        }
+
+        function showExplanation(text, isCorrect) {
+            const explanationHTML = `
+                <div class="explanation" style="border-left: 4px solid ${isCorrect ? 'var(--correct)' : 'var(--incorrect)'};">
+                    <p>${text}</p>
+                </div>
+            `;
+            document.getElementById('questionContainer').innerHTML += explanationHTML;
+        }
+
+        function nextQuestion() {
+            setTimeout(() => {
+                if(currentQuestionIndex < totalQuestions - 1) {
+                    currentQuestionIndex++;
+                    showQuestion();
+                } else {
+                    finishQuiz();
+                }
+            }, 3000);
+        }
+
+        function finishQuiz() {
+            updateRanking();
+            const scoreHTML = `
+                <div class="score-box">
+                    <h2>Quiz Concluído! 🎉</h2>
+                    <p>Sua pontuação: ${score}</p>
+                    <p>${score >= 20 ? 'Excelente! 🌟' : score >= 15 ? 'Bom trabalho! 😊' : 'Tente novamente! 💪'}</p>
+                    <button class="restart-button" onclick="startQuiz()">Reiniciar Quiz</button>
+                </div>
+            `;
+            document.getElementById('questionContainer').innerHTML = scoreHTML;
+            showRanking();
+        }
+
+        function updateRanking() {
+            const name = prompt("Digite seu nome para o ranking:");
+            if(name) {
+                ranking.push({ name, score });
+                ranking.sort((a, b) => b.score - a.score);
+                if(ranking.length > 10) ranking.pop();
+                localStorage.setItem('quizRanking', JSON.stringify(ranking));
+            }
+        }
+
+        function showRanking() {
+            const rankingHTML = ranking.map((entry, index) => `
+                <li>${index + 1}. ${entry.name} - ${entry.score} pontos</li>
+            `).join('');
+            
+            document.getElementById('rankingList').innerHTML = rankingHTML;
+            document.getElementById('rankingContainer').style.display = 'block';
+        }
+
+        function updateProgress() {
+            const progress = ((currentQuestionIndex + 1) / totalQuestions) * 100;
+            document.querySelector('.progress').style.width = `${progress}%`;
+        }
+    </script>
+</body>
+</html>

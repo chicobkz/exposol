@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador UV</title>
+    <style>
+        :root {
+            --uv-gradient: linear-gradient(90deg, 
+                #4CAF50 0%,       /* Verde */
+                #FFEB3B 20%,      /* Amarelo */
+                #FF9800 40%,      /* Laranja */
+                #F44336 60%,      /* Vermelho */
+                #9C27B0 80%,      /* Violeta */
+                #673AB7 100%      /* Roxo escuro */
+            );
+            --primary: #FF6B35;
+            --secondary: #FFD460;
+            --background: linear-gradient(135deg, #1a1a1a 0%, #2c3e50 100%);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background: var(--background);
+            color: white;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 25px;
+            left: 25px;
+            padding: 12px 25px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid white;
+            border-radius: 30px;
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateX(-5px);
+        }
+
+        .back-button::before {
+            content: '←';
+            font-size: 1.2em;
+        }
+
+        .container {
+            padding: 2rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 2.5em;
+            color: var(--secondary);
+        }
+
+        .uv-scale {
+            height: 60px;
+            background: var(--uv-gradient);
+            border-radius: 15px;
+            margin: 3rem 0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            position: relative;
+        }
+
+        .uv-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        input[type="range"] {
+            width: 100%;
+            margin: 2rem 0;
+            -webkit-appearance: none;
+            height: 10px;
+            border-radius: 5px;
+            background: rgba(255,255,255,0.1);
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 25px;
+            height: 25px;
+            background: white;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .result-box {
+            background: rgba(255,255,255,0.1);
+            padding: 2rem;
+            border-radius: 15px;
+            margin-top: 2rem;
+            animation: slideUp 0.5s ease;
+        }
+
+        .recommendation {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-left: 4px solid;
+            background: rgba(255,255,255,0.05);
+            border-radius: 5px;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-button">Voltar</a>
+
+    <div class="container">
+        <h1>Simulador de Índice UV</h1>
+        
+        <div class="uv-scale"></div>
+        <div class="uv-labels">
+            <span>0.0</span>
+            <span>2.9</span>
+            <span>5.9</span>
+            <span>7.9</span>
+            <span>10.9</span>
+            <span>11+</span>
+        </div>
+
+        <input type="range" min="0" max="11" step="0.1" value="0" id="uvSlider">
+        
+        <div class="result-box">
+            <h2 id="uvValue">Índice UV: 0.0</h2>
+            <div id="uvRecommendation" class="recommendation">
+                <p>Deslize a barra para ver as recomendações de proteção solar.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const uvData = [
+            {
+                range: [0.0, 2.9],
+                color: '#4CAF50',
+                level: 'Baixo',
+                recommendations: [
+                    'Use óculos de sol em dias claros.',
+                    'Se você se queima facilmente, use protetor solar FPS 30+.',
+                    'Cuidado com superfícies refletivas como água, areia e neve.'
+                ]
+            },
+            {
+                range: [3.0, 5.9],
+                color: '#FFEB3B',
+                level: 'Moderado',
+                recommendations: [
+                    'Fique na sombra entre 10h e 16h.',
+                    'Use roupas protetoras, chapéu e óculos com filtro UV.',
+                    'Aplique protetor FPS 30+ a cada 2 horas.'
+                ]
+            },
+            {
+                range: [6.0, 7.9],
+                color: '#FF9800',
+                level: 'Alto',
+                recommendations: [
+                    'Reduza a exposição entre 10h e 16h.',
+                    'Use todas as proteções recomendadas.',
+                    'Reaplique protetor após nadar ou suar.'
+                ]
+            },
+            {
+                range: [8.0, 10.9],
+                color: '#F44336',
+                level: 'Muito Alto',
+                recommendations: [
+                    'Risco muito alto de danos à pele e olhos.',
+                    'Tome precauções extras.',
+                    'Evite exposição prolongada.'
+                ]
+            },
+            {
+                range: [11.0, 15.0],
+                color: '#9C27B0',
+                level: 'Extremo',
+                recommendations: [
+                    'Risco extremo de queimaduras.',
+                    'Evite ao máximo a exposição ao sol.',
+                    'Use todas as proteções possíveis.'
+                ]
+            }
+        ];
+
+        const slider = document.getElementById('uvSlider');
+        const uvValue = document.getElementById('uvValue');
+        const recommendation = document.getElementById('uvRecommendation');
+
+        slider.addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            uvValue.textContent = `Índice UV: ${value.toFixed(1)}`;
+            updateRecommendation(value);
+        });
+
+        function updateRecommendation(value) {
+            const currentLevel = uvData.find(level => 
+                value >= level.range[0] && value <= level.range[1]
+            );
+
+            recommendation.innerHTML = `
+                <h3 style="color: ${currentLevel.color}">Nível: ${currentLevel.level}</h3>
+                <ul>
+                    ${currentLevel.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                </ul>
+            `;
+            recommendation.style.borderColor = currentLevel.color;
+        }
+    </script>
+</body>
+</html>
