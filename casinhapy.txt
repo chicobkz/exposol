@@ -1,0 +1,135 @@
+import serial
+import tkinter as tk
+from tkinter import ttk
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import threading
+
+# Configurações da comunicação serial
+PORT = 'COM3'  # Substitua pela porta correta
+BAUD_RATE = 9600
+
+# Variáveis globais
+voltage = 0.0
+power = 0.0
+energy = 0.0
+is_reading = True
+voltage_history = []
+
+# Função para ler dados da porta serial
+def read_serial():
+    global voltage, power, energy, is_reading
+    try:
+        ser = serial.Serial(PORT, BAUD_RATE, timeout=1)
+        while True:
+            if is_reading:
+                data = ser.readline().decode('utf-8').strip()
+                if data.startswith("Tensao: "):
+                    try:
+                        voltage = float(data.split(" ")[1])
+                        power = voltage * 1.0  # Supondo corrente constante de 1A
+                        energy += power / 3600  # Acumula energia em Wh
+                        voltage_history.append(voltage)
+                        if len(voltage_history) > 100:
+                            voltage_history.pop(0)  # Mantém o histórico com no máximo 100 pontos
+                        update_ui()
+                    except ValueError:
+                        print("Erro ao converter tensão.")
+    except serial.SerialException as e:
+        print(f"Erro na comunicação serial: {e}")
+
+# Função para atualizar a interface
+def update_ui():
+    voltage_label.config(text=f"Tensão: {voltage:.2f} V")
+    power_label.config(text=f"Potência: {power:.2f} W")
+    energy_label.config(text=f"Energia Acumulada: {energy / 1000:.2f} kWh")
+    led_label.config(text=f"Lâmpada LED (10W): {power / 10:.1f} horas")
+    fan_label.config(text=f"Ventilador (50W): {power / 50:.1f} horas")
+    tv_label.config(text=f"TV (100W): {power / 100:.1f} horas")
+    update_graph()
+
+# Função para atualizar o gráfico
+def update_graph():
+    ax.clear()
+    ax.plot(voltage_history, color='blue')
+    ax.set_title("Tensão ao Longo do Tempo")
+    ax.set_xlabel("Tempo")
+    ax.set_ylabel("Tensão (V)")
+    ax.grid(True)
+    canvas.draw()
+
+# Função para ligar/desligar a leitura
+def toggle_reading():
+    global is_reading
+    is_reading = not is_reading
+    if is_reading:
+        toggle_button.config(text="Desligar")
+    else:
+        toggle_button.config(text="Ligar")
+    ser.write(b'1' if is_reading else b'0')
+
+# Função para zerar os dados
+def reset_data():
+    global voltage, power, energy, voltage_history
+    voltage = 0.0
+    power = 0.0
+    energy = 0.0
+    voltage_history.clear()
+    ser.write(b'0')  # Envia comando para apagar os LEDs
+    update_ui()
+
+# Configuração da interface gráfica
+root = tk.Tk()
+root.title("Monitoramento de Energia Solar")
+root.geometry("1200x800")
+
+# Frame para os dados
+data_frame = ttk.Frame(root)
+data_frame.pack(side=tk.LEFT, padx=20, pady=20)
+
+# Labels para exibir os dados
+voltage_label = ttk.Label(data_frame, text="Tensão: 0.00 V", font=("Arial", 16))
+voltage_label.pack(pady=10)
+
+power_label = ttk.Label(data_frame, text="Potência: 0.00 W", font=("Arial", 16))
+power_label.pack(pady=10)
+
+energy_label = ttk.Label(data_frame, text="Energia Acumulada: 0.00 kWh", font=("Arial", 16))
+energy_label.pack(pady=10)
+
+# Comparação com aparelhos domésticos
+ttk.Label(data_frame, text="Equivalente a:", font=("Arial", 16)).pack(pady=10)
+led_label = ttk.Label(data_frame, text="Lâmpada LED (10W): 0.0 horas", font=("Arial", 14))
+led_label.pack(pady=5)
+fan_label = ttk.Label(data_frame, text="Ventilador (50W): 0.0 horas", font=("Arial", 14))
+fan_label.pack(pady=5)
+tv_label = ttk.Label(data_frame, text="TV (100W): 0.0 horas", font=("Arial", 14))
+tv_label.pack(pady=5)
+
+# Botões
+button_frame = ttk.Frame(data_frame)
+button_frame.pack(pady=20)
+
+toggle_button = ttk.Button(button_frame, text="Desligar", command=toggle_reading)
+toggle_button.pack(side=tk.LEFT, padx=10)
+
+reset_button = ttk.Button(button_frame, text="Zerar", command=reset_data)
+reset_button.pack(side=tk.LEFT, padx=10)
+
+# Gráfico
+graph_frame = ttk.Frame(root)
+graph_frame.pack(side=tk.RIGHT, padx=20, pady=20)
+
+fig = Figure(figsize=(8, 4), dpi=100)
+ax = fig.add_subplot(111)
+canvas = FigureCanvasTkAgg(fig, master=graph_frame)
+canvas.get_tk_widget().pack()
+
+# Inicia a leitura serial em uma thread separada
+ser = serial.Serial(PORT, BAUD_RATE, timeout=1)
+thread = threading.Thread(target=read_serial)
+thread.daemon = True
+thread.start()
+
+# Inicia a interface gráfica
+root.mainloop()
