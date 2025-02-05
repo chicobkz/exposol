@@ -1,19 +1,16 @@
-from usbserial import Serial
-import time
+import usb.core
+import usb.util
 
-try:
-    # Tenta abrir o dispositivo diretamente
-    with Serial('/dev/ttyACM0', baudrate=9600, timeout=1) as arduino:
-        print("Conectado ao Arduino!")
+# Tenta encontrar o Arduino (Vendor ID e Product ID comuns, ajuste se necessário)
+dev = usb.core.find(idVendor=0x2341, idProduct=0x0043)
 
-        while True:
-            arduino.write(b'Hello Arduino\n')
-            response = arduino.readline().decode('utf-8').strip()
-            if response:
-                print(f"Recebido do Arduino: {response}")
-            time.sleep(1)
+if dev is None:
+    print("Arduino não encontrado. Verifique a conexão OTG.")
+else:
+    print("Arduino encontrado!")
 
-except PermissionError as e:
-    print(f"Erro de permissão: {e}")
-except Exception as e:
-    print(f"Erro: {e}")
+    try:
+        dev.set_configuration()
+        print("Configuração estabelecida. Pronto para comunicação!")
+    except usb.core.USBError as e:
+        print(f"Erro de permissão ou acesso: {e}")
