@@ -1,16 +1,32 @@
-import usb.core
-import usb.util
+from usbserial4a import serial4a
+import time
 
-# Tenta encontrar o Arduino (Vendor ID e Product ID comuns, ajuste se necessário)
-dev = usb.core.find(idVendor=0x2341, idProduct=0x0043)
+# Tenta encontrar a porta automaticamente
+ports = serial4a.get_serial_ports()
 
-if dev is None:
-    print("Arduino não encontrado. Verifique a conexão OTG.")
+if not ports:
+    print("Nenhum dispositivo USB detectado. Verifique a conexão OTG.")
 else:
-    print("Arduino encontrado!")
+    print(f"Dispositivos encontrados: {ports}")
+
+    # Seleciona o primeiro dispositivo encontrado
+    arduino_port = ports[0]
+    baud_rate = 9600
 
     try:
-        dev.set_configuration()
-        print("Configuração estabelecida. Pronto para comunicação!")
-    except usb.core.USBError as e:
-        print(f"Erro de permissão ou acesso: {e}")
+        arduino = serial4a.Serial(arduino_port, baud_rate, timeout=1)
+        time.sleep(2)  # Dá tempo para o Arduino inicializar
+
+        print(f"Conectado ao Arduino na porta {arduino_port}!")
+
+        while True:
+            arduino.write(b'Hello Arduino\n')  # Envia comando para o Arduino
+            resposta = arduino.readline().decode('utf-8').strip()
+            if resposta:
+                print(f"Recebido do Arduino: {resposta}")
+            time.sleep(1)
+
+    except PermissionError as e:
+        print(f"Erro de permissão: {e}")
+    except Exception as e:
+        print(f"Erro: {e}")
